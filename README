@@ -1,0 +1,60 @@
+# Cromwell on compute0
+## Cromwell Server
+On compute0 ...
+### Start an Interactive LSF Job
+```
+LSF_DOCKER_PRESERVE_ENVIRONMENT=false bsub -q docker-interactive -Is -R 'rusage[mem=8000]' -M 8000000 -a 'docker(ebelter/cromwell:latest)' /bin/bash
+```
+### Creat Logging Path
+```
+mkdir cromwell-executions/ && mkdir -p cromwell-executions/logs && mkdir -p cromwell-executions/workflow-logs
+```
+### Run the Server
+See and edit as needed the _cromwell.config_ file.
+```
+java -Xmx7G -Dconfig.file=cromwell.config -jar jar/cromwell.jar server 2>&1 > cromwell-executions/server.log &
+```
+## Cromwell Workflow WDL 
+See a very basic workflow  _wf.wdl_ and _wf.inputs.json_ example files. Edit as needed.
+
+This is a very basic workflow. The command section could call a command in PATH or a supplied script. A custom script would be needed if wanting to use GCp, or set other environment variables.
+
+### Using GCP
+
+If GCP is needed, setup a "home" path for credentials, then use _script.sh_ to set HOME and 
+
+## Run a WorkFlow
+### Submit Command
+```
+java -jar jar/cromwell.jar submit wf.wdl -i wf.inputs.json
+```
+Save the workflow id! It will be helpful later.
+### Check a Workflow
+Using cromshell, the workflow progess can be viewed.
+#### General Status
+```
+/gscmnt/gc2758/analysis/reblock/cromshell/cromshell status $(cat WF_ID)
+```
+#### Status and Show Individaul Steps Progress
+```
+/gscmnt/gc2758/analysis/reblock/cromshell/cromshell execution-count-status $(cat WF_ID)
+```
+#### Grab the Metadata!
+```
+/gscmnt/gc2758/analysis/reblock/cromshell/cromshell metadata-lite $(cat WF_ID)
+```
+### Rerun a Failed Shard
+LSF_DOCKER_VOLUMES='/gscmnt/gc2758/analysis/reblock/cromwell-executions/ReblockGVCF/64220650-71e9-46a0-a2fc-4889d3bdd569/call-LaimsReblockGVCF/shard-0:/cromwell-executions/ReblockGVCF/64220650-71e9-46a0-a2fc-4889d3bdd569/call-LaimsReblockGVCF/shard-0' LSF_DOCKER_PRESERVE_ENVIRONMENT=false \
+ bsub \
+ -J cromwell_64220650_LaimsReblockGVCF \
+ -cwd /gscmnt/gc2758/analysis/reblock/cromwell-executions/ReblockGVCF/64220650-71e9-46a0-a2fc-4889d3bdd569/call-LaimsReblockGVCF/shard-0 \
+ -o /gscmnt/gc2758/analysis/reblock/cromwell-executions/logs/cromwell-%J.out \
+ -e /gscmnt/gc2758/analysis/reblock/cromwell-executions/logs/cromwell-%J.err \
+ -q 'ccdg' \
+ -g '/ebelter/ccdg' \
+ -G 'info/' \
+ -a "docker(halllab/gatk-reblock@sha256:2a570f84c3309cd5d7aed13c4c1443b74248ad51b8c46d587c2fb6d49e9f274d)" \
+ -M 16777216 \
+ -n 1 \
+ -R "span[hosts=1] select[mem>16384] rusage[mem=16384]" \
+ /bin/bash /gscmnt/gc2758/analysis/reblock/cromwell-executions/ReblockGVCF/64220650-71e9-46a0-a2fc-4889d3bdd569/call-LaimsReblockGVCF/shard-0/execution/script
